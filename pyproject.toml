@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling", "protobuf==3.20.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "arctic_spa"
+version = "0.0.1"
+authors = [
+  { name="Steve Pomeroy", email="steve@staticfree.info" },
+]
+description = "An interface to Arctic Spa hot tubs"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[tool.hatch.build]
+artifacts = [
+  "src/arctic_spa/proto",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/xxv/arctic-spa"
+"Bug Tracker" = "https://github.com/xxv/arctic-spa/issues"

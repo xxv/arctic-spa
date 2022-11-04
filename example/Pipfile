@@ -1,0 +1,15 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+hexdump = "*"
+protobuf = "==3.20.0"
+arctic-spa = {path = "./.."}
+
+[dev-packages]
+ipython = "*"
+
+[requires]
+python_version = "3.10"

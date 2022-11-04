@@ -1,0 +1,5 @@
+src/arctic_spa/proto/
+dist/
+*~
+*.swp
+example/Pipfile.lock

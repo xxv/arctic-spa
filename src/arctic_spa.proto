@@ -1,0 +1,178 @@
+syntax = "proto2";
+
+
+message SpaLive {
+  enum HeaterStatus {
+    IDLE = 0;
+    WARMUP = 1;
+    HEATING = 2;
+    COOLDOWN = 3;
+  }
+
+  enum PumpStatus {
+    OFF = 0;
+    LOW = 1;
+    HIGH = 2;
+  }
+
+  enum FilterStatus {
+    FILTER_IDLE = 0;
+    FILTER_PURGE = 1;
+    FILTER_FILTERING = 2;
+    FILTER_SUSPENDED = 3;
+    FILTER_OVER_TEMPERATURE = 4;
+    FILTER_RESUMING = 5;
+    FILTER_BOOST = 6;
+    FILTER_SANITIZE = 7;
+  }
+
+  enum OzoneStatus {
+    OZONE_IDLE = 0;
+    OZONE_ACTIVE = 1;
+    OZONE_SUSPENDED = 2;
+  }
+
+  enum SaunaStatus {
+    NORMAL = 0;
+    PRESET_A = 1;
+    PRESET_B = 2;
+    PRESET_C = 3;
+  }
+
+  optional int32 temperature_fahrenheit = 1;
+  optional int32 temperature_setpoint_fahrenheit = 2;
+  optional PumpStatus pump_1 = 3;
+  optional PumpStatus pump_2 = 4;
+  optional PumpStatus pump_3 = 5;
+  optional PumpStatus pump_4 = 6;
+  optional PumpStatus pump_5 = 7;
+  optional PumpStatus blower_1 = 8;
+  optional PumpStatus blower_2 = 9;
+  optional bool lights = 10;
+  optional bool stereo = 11;
+  optional HeaterStatus heater_1 = 12;
+  optional HeaterStatus heater_2 = 13;
+  optional FilterStatus filter = 14;
+  optional bool onzen = 15;
+  optional OzoneStatus ozone = 16;
+  optional bool exhaust_fan = 17;
+  optional SaunaStatus sauna = 18;
+  // missing 19
+  optional int32 heater_adc = 20;
+  optional int32 sauna_time_remaining = 21;
+  optional bool economy = 22;
+  optional int32 current_adc = 23;
+  optional bool all_on = 24;
+  optional bool fogger = 25;
+  optional int32 error = 26;
+  optional int32 alarm = 27;
+  optional int32 status = 28;
+  optional int32 ph = 29;
+  optional int32 orp = 30;
+  optional bool sds = 31;
+  optional bool yess = 32;
+}
+
+message Config {
+  enum Phase {
+    TRUE_THREE = 0;
+    SINGLE = 1;
+    TWO = 2;
+    THREE = 3;
+  }
+
+  optional bool pump1 = 1;
+  optional bool pump2 = 2;
+  optional bool pump3 = 3;
+  optional bool pump4 = 4;
+  optional bool pump5 = 5;
+  optional bool blower1 = 6;
+  optional bool blower2 = 7;
+  optional bool lights = 8;
+  optional bool stereo = 9;
+  optional bool heater1 = 10;
+  optional bool heater2 = 11;
+  optional bool filter = 12;
+  optional bool onzen = 13;
+  optional bool ozone_peak_1 = 14;
+  optional bool ozone_peak_2 = 15;
+  optional bool exhaust_fan = 16;
+  optional Phase powerlines = 17;
+  optional int32 breaker_size = 18;
+  optional int32 smart_onzen = 19;
+  optional bool fogger = 20;
+  optional bool sds = 21;
+  optional bool yess = 22;
+}
+
+message Info {
+  enum SpaType {
+    HOT_TUB = 0;
+    COLD_TUB = 1;
+    SAUNA = 2;
+  }
+
+  optional string pack_serial_number = 1;
+  optional string pack_firmware_version = 2;
+  optional string pack_hardware_version = 3;
+  optional string pack_product_id = 4;
+  optional string pack_board_id = 5;
+  optional string topside_product_id = 6;
+  optional string topside_software_version = 7;
+  optional string guid = 8;
+  optional SpaType spa_type = 9;
+  optional bool website_registration = 10;
+  optional bool website_registration_confirm = 11;
+  optional bytes mac_address = 12;
+  optional int32 firmware_version = 13;
+  optional int32 product_code = 14;
+  optional string var_software_version = 15;
+  optional string spaboy_firmware_version = 16;
+  optional string spaboy_hardware_version = 17;
+  optional string spaboy_product_id = 18;
+  optional string spaboy_serial_number = 19;
+  optional string rfid_firmware_version = 20;
+  optional string rfid_hardware_version = 21;
+  optional string rfid_product_id = 22;
+  optional string rfid_serial_number = 23;
+}
+
+
+
+message OnzenLive {
+  enum Polarity {
+    POSITIVE = 0;
+    NEGATIVE = 1;
+  }
+
+  enum Color {
+    LOW = 0;
+    CAUTION_LOW = 1;
+    OK = 2;
+    CAUTION_HIGH = 3;
+    HIGH = 4;
+  }
+
+  optional string guid = 1;
+  optional int32 orp = 2;
+  optional int32 ph_100 = 3;
+  optional int32 current = 4;
+  optional int32 voltage = 5;
+  optional int32 current_setpoint = 6;
+  optional int32 voltage_setpoint = 7;
+  optional bool pump1 = 8;
+  optional bool pump2 = 9;
+  optional int32 orp_state_machine = 10;
+  optional int32 electrode_state_machine = 11;
+  optional int32 electrode_id = 12;
+  optional Polarity electrode_polarity = 13;
+  optional int32 electrode_1_resistance_1 = 14;
+  optional int32 electrode_1_resistance_2 = 15;
+  optional int32 electrode_2_resistance_1 = 16;
+  optional int32 electrode_2_resistance_2 = 17;
+  optional bool command_mode = 18;
+  optional int32 electrode_mAH = 19;
+  optional Color ph_color = 20;
+  optional Color orp_color = 21;
+  optional int32 electrode_wear = 22;
+}
