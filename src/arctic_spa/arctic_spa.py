@@ -49,6 +49,9 @@ class Packet():
     def _load_from_network(self, payload):
         raise NotImplementedError
 
+    def __getattr__(self, __name: str) -> any:
+        return getattr(self.data, __name)
+
     def __str__(self):
         return f"<{self.data_type.name} counter: {self.counter}, " \
                 "checksum: {self.checksum}> payload:\n{self.data}\nend payload"
@@ -197,7 +200,7 @@ class ArcticSpa():
         self._reader = None
         self._writer = None
 
-    async def poll(self, desired_types=(Live, OnzenLive), timeout=5) -> list:
+    async def poll(self, types=(Live, OnzenLive), timeout=5) -> list:
         """Connects, requests the desired types of data, and disconnects
 
         This looks for a set of desired packets and returns the most recent of each type.
@@ -206,7 +209,7 @@ class ArcticSpa():
         Note: this may return packet types that were not requested in addition to the requested
         types.
         """
-        return await asyncio.wait_for(self._poll_no_timeout(desired_types=desired_types), timeout)
+        return await asyncio.wait_for(self._poll_no_timeout(desired_types=types), timeout)
 
     async def _poll_no_timeout(self, desired_types) -> list:
         await self.connect()
