@@ -1,7 +1,6 @@
 """Arctic Spa hot tub interface"""
 
-import socket
-import time
+import asyncio
 import struct
 from enum import IntEnum
 from arctic_spa.proto import arctic_spa_pb2
@@ -33,7 +32,7 @@ class TypeKey(IntEnum):
 
 class Packet():
     """A packet, including a type and payload
-    
+
     This is not a TCP/IP packet, but a contiguous message to/from the controller."""
 
     preamble = b"\xAB\xAD\x1D\x3A"
@@ -109,7 +108,7 @@ class DecodeError(Exception):
         super().__init__(message)
 
 
-class SpaProtocol(object):
+class SpaProtocol():
     """Spa network protocol decoder"""
     type_map = {
         TypeKey.LIVE: Live,
@@ -134,10 +133,15 @@ class SpaProtocol(object):
 
     def decode_one(self, data: bytes) -> tuple[Packet, bytes]:
         """Decode the first packet of data and return any undecoded data"""
-        header = struct.unpack("!xxxxBBBBIIHH", data[0:20])
+        header_size = 20
+
+        if len(data) < header_size:
+            raise DecodeError(f"Expecting at least {header_size} bytes, got {len(data)}")
+
+        header = struct.unpack("!xxxxBBBBIIHH", data[0:header_size])
         data_type = TypeKey(header[6])
         length = header[7]
-        payload = data[20 : (20 + length)]
+        payload = data[header_size : (header_size + length)]
 
         packet = None
 
@@ -153,7 +157,7 @@ class SpaProtocol(object):
         remainder = data[20 + length :]
 
         return (packet, remainder)
-    
+
     def _debug(self, checksum, counter, data_type, length, payload):
         print(f"checksum: {checksum[0]:0X}{checksum[1]:0X}{checksum[2]:0X}{checksum[3]:0X}")
         print(f"counter: {counter}")
@@ -173,53 +177,85 @@ class ArcticSpa():
     """Interface for communicating with Arctic Spa hot tubs"""
     PORT = 65534
 
-    INIT = (
-        b"\x00\xab\xad\x1d\x3a\x11\xc2\xc9\x84\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    _REQUEST_LIVE = \
+        b"\xab\xad\x1d\x3a\x11\xc2\xc9\x84\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+
+    _REQUEST_ONZEN_LIVE = \
         b"\xab\xad\x1d\x3a\x35\xa9\x2c\x14\x00\x00\x00\x00\x00\x00\x00\x00\x00\x30\x00\x00"
-    )
+
+    _INIT = _REQUEST_LIVE + _REQUEST_ONZEN_LIVE
 
     def __init__(self, host: str) -> None:
-        """Configures a new"""
+        """Configures a new client
+
+        This client can be used in two ways:
+           * Calling `poll()` will connect, get the data, and disconnect automatically.
+           * Calling `connect()`, `read_packets()`, and `disconnect()` lets you read
+             as many packets as you want."""
         self.host = host
         self.proto = SpaProtocol()
+        self._reader = None
+        self._writer = None
 
-    def poll(self, desired_types=(Live, OnzenLive)) -> list:
+    async def poll(self, desired_types=(Live, OnzenLive), timeout=5) -> list:
         """Connects, requests the desired types of data, and disconnects
-        
+
         This looks for a set of desired packets and returns the most recent of each type.
+        This waits until all the requested types have been returned.
+
+        Note: this may return packet types that were not requested in addition to the requested
+        types.
         """
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect((self.host, ArcticSpa.PORT))
-            sock.sendall(ArcticSpa.INIT)
+        return await asyncio.wait_for(self._poll_no_timeout(desired_types=desired_types), timeout)
 
-            got_data = False
-            desired_packets = {}
-            for desired_type in desired_types:
-                desired_packets[desired_type] = None
+    async def _poll_no_timeout(self, desired_types) -> list:
+        await self.connect()
 
-            while not got_data:
-                data = sock.recv(4096)
+        got_data = False
+        desired_packets = {}
+        for desired_type in desired_types:
+            desired_packets[desired_type] = None
 
-                packets = self.proto.decode(data)
-                for packet in packets:
+        while not got_data:
+            for packet in await self.read_packets():
+                if packet is not None:
                     desired_packets[type(packet)] = packet
-                
-                got_data = True
-                if None in desired_packets.values():
-                    got_data = False
 
-                time.sleep(0.1)
+            got_data = True
+            if None in desired_packets.values():
+                got_data = False
 
-            return desired_packets.values()
+        await self.disconnect()
 
-    def connect(self) -> None:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((self.host, ArcticSpa.PORT))
-            s.sendall(ArcticSpa.INIT)
+        return desired_packets.values()
 
-            while True:
-                data = s.recv(4096)
+    async def connect(self) -> None:
+        """Connects to the hot tub and transmits an init sequence"""
+        if self._writer is not None:
+            self._writer.close()
+            await self._writer.wait_closed()
 
-                self.proto.decode(data)
+        reader, writer = await asyncio.open_connection(self.host, ArcticSpa.PORT)
+        self._reader = reader
+        self._writer = writer
 
-                time.sleep(0.1)
+        writer.write(ArcticSpa._INIT)
+        await writer.drain()
+
+    async def disconnect(self) -> None:
+        """Disconnects the client"""
+        if self._writer is not None:
+            self._writer.close()
+            await self._writer.wait_closed()
+
+            self._writer = None
+            self._reader = None
+
+    async def read_packets(self) -> list[Packet]:
+        """Reads from the network and returns any received packets"""
+        if self._reader is None:
+            raise ConnectionError("Not connected")
+
+        data = await self._reader.read(4096)
+
+        return self.proto.decode(data)
