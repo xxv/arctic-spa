@@ -1,7 +1,6 @@
 """Arctic Spa hot tub interface"""
 
 import asyncio
-import ipaddress
 import struct
 from enum import IntEnum
 from arctic_spa.proto import arctic_spa_pb2
@@ -115,7 +114,7 @@ class DecodeError(Exception):
         super().__init__(message)
 
 
-class SpaProtocol():
+class SpaProtocol:
     """Spa network protocol decoder"""
     TYPE_MAP = {
         TypeKey.LIVE: Live,
