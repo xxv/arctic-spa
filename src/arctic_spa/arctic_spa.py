@@ -1,6 +1,7 @@
 """Arctic Spa hot tub interface"""
 
 import asyncio
+import ipaddress
 import struct
 from enum import IntEnum
 from arctic_spa.proto import arctic_spa_pb2
@@ -16,7 +17,7 @@ class TypeKey(IntEnum):
     INFO = 6
     ERROR = 7
     FIRMWARE = 8
-    UNKNOWN_10 = 10
+    HEARTBEAT = 10
     FILTERS = 13
     ONZEN_LIVE = 48
     ONZEN_SETTINGS = 50
@@ -54,7 +55,10 @@ class Packet():
 
     def __str__(self):
         return f"<{self.data_type.name} counter: {self.counter}, " \
-                "checksum: {self.checksum}> payload:\n{self.data}\nend payload"
+                f"checksum: {self._checksum_str()}> payload:\n{self.data}\nend payload"
+
+    def _checksum_str(self):
+        return "".join(map(lambda digit: f'{digit:0X}', self.checksum))
 
 
 class Live(Packet):
@@ -113,12 +117,14 @@ class DecodeError(Exception):
 
 class SpaProtocol():
     """Spa network protocol decoder"""
-    type_map = {
+    TYPE_MAP = {
         TypeKey.LIVE: Live,
         TypeKey.CONFIG: Config,
         TypeKey.INFO: Info,
         TypeKey.ONZEN_LIVE: OnzenLive,
     }
+
+    HEADER_SIZE = 20
 
     def decode(self, data: bytes) -> list[Packet]:
         """Decode the data into a list of packets"""
@@ -136,26 +142,27 @@ class SpaProtocol():
 
     def decode_one(self, data: bytes) -> tuple[Packet, bytes]:
         """Decode the first packet of data and return any undecoded data"""
-        header_size = 20
 
-        if len(data) < header_size:
-            raise DecodeError(f"Expecting at least {header_size} bytes, got {len(data)}")
+        if len(data) < self.HEADER_SIZE:
+            raise DecodeError(f"Expecting at least {self.HEADER_SIZE} bytes, got {len(data)}")
 
-        header = struct.unpack("!xxxxBBBBIIHH", data[0:header_size])
+        if data[0:4] != Packet.preamble:
+            raise DecodeError("Data does not start with preamble")
+
+        header = struct.unpack("!xxxxBBBBIIHH", data[0:self.HEADER_SIZE])
+
         data_type = TypeKey(header[6])
         length = header[7]
-        payload = data[header_size : (header_size + length)]
+        payload = data[self.HEADER_SIZE : (self.HEADER_SIZE + length)]
 
         packet = None
 
-        if data_type != TypeKey.UNKNOWN_10:
-            if data[0:4] != Packet.preamble:
-                raise DecodeError("Data does not start with preamble")
-
+        if data_type != TypeKey.HEARTBEAT:
             checksum = bytes(header[0:4])
             counter = header[4]
-            if data_type in self.type_map:
-                packet = self.type_map[data_type](counter, checksum, payload)
+
+            if data_type in self.TYPE_MAP:
+                packet = self.TYPE_MAP[data_type](counter, checksum, payload)
 
         remainder = data[20 + length :]
 
