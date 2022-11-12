@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "protobuf==3.20.0"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
@@ -11,6 +11,7 @@ authors = [
 description = "An interface to Arctic Spa hot tubs"
 readme = "README.md"
 requires-python = ">=3.7"
+dependencies = ["protobuf==3.20.0"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
